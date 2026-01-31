@@ -1,10 +1,14 @@
 # Unity-2D Games - Sample Scripts
+## Work in Progress
 
 #Player:
 - Movement
 - Controls
-- Attack
-
-#Enemy:
+- Interact
+- 
+#inventory system
+- Item Data
+- Inventory Manager
+#Enemy
 - Movement
-- Standard Attacks
+- Attack
