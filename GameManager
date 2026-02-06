@@ -1,0 +1,123 @@
+using System.Collections.Generic;
+using FMOD.Studio;
+using FMODUnity;
+using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.Playables;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+
+public class GameManager : MonoBehaviour
+{
+    public static GameManager Instance { get; private set; }
+
+    [Header("Configurações")]
+    public int totalDeDias = 5;
+
+    [Header("Monitoramento")]
+    public int diaAtual = 1;
+    public bool falhouEmAlgumDia = false;
+
+    public GameObject player;
+    public PlayerInput playerInput;
+    public GameObject startPosition;
+
+    public PlayableDirector cutsceneFinal;
+    public GameObject cutsceneFinalParent;
+    public Image fotoCutscene;
+    public List<Sprite> fotosCutsceneDerrota;
+    public List<Sprite> fotosCutsceneVitoria;
+    public EventReference musicaDerrota;
+    public EventReference musicaVitoria;
+
+    void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+    }
+
+    void OnEnable()
+    {
+        DayManager.DayPassedEvent += VerificarReceitaENoite;
+    }
+
+    void OnDisable()
+    {
+        DayManager.DayPassedEvent -= VerificarReceitaENoite;
+    }
+
+    void VerificarReceitaENoite()
+    {
+        var receitaDoDia = ItemRandomizer.Instance.ritualRecipe.recipeItems;
+
+        bool acertouTudoHoje = true;
+        Debug.Log($"=== Fechamento do Dia {diaAtual} ===");
+
+        foreach (var par in receitaDoDia)
+        {
+            ItemData itemNecessario = par.Key;
+            int quantidadeNecessaria = par.Value;
+
+
+            int qtdNoBolso = InventoryManager.Instance.GetItemQuantity(itemNecessario);
+
+            if (qtdNoBolso < quantidadeNecessaria)
+            {
+                acertouTudoHoje = false;
+                break;
+            }
+        }
+
+
+        if (!acertouTudoHoje)
+        {
+            playerInput.enabled = false;
+            LeanTween.move(player, startPosition.transform.position, 7f).setOnComplete(() =>
+            {
+                var instance = RuntimeManager.CreateInstance(musicaDerrota);
+                instance.start();
+                Sprite foto = fotosCutsceneDerrota[0];
+                fotoCutscene.sprite = foto;
+
+                cutsceneFinalParent.SetActive(true);
+                cutsceneFinal.Play();
+                cutsceneFinal.stopped += CarregarMenu;
+            });
+
+            return;
+        }
+
+        InventoryManager.Instance.ResetInventory();
+        diaAtual++;
+
+        if (diaAtual > totalDeDias)
+        {
+            Sprite foto = fotosCutsceneVitoria[0];
+            fotoCutscene.sprite = foto;
+
+            var instance = RuntimeManager.CreateInstance(musicaVitoria);
+            instance.start();
+
+            cutsceneFinalParent.SetActive(true);
+            cutsceneFinal.Play();
+            cutsceneFinal.stopped += CarregarMenu;
+        }
+        else
+        {
+            DayManager.Instance.SetDay();
+        }
+    }
+
+    void CarregarMenu(PlayableDirector playableDirector)
+    {
+        SceneManager.LoadSceneAsync(SceneManager.GetActiveScene().buildIndex - 1);
+        cutsceneFinal.stopped -= CarregarMenu;
+    }
+
+}
